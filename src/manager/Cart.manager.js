@@ -12,7 +12,6 @@ class CartManager {
       const data = await fsPromise.readFile(this.path, "utf8");
       return JSON.parse(data);
     } catch (error) {
-      // Si el archivo no existe, retorna un array vacío
       return [];
     }
   }
@@ -24,7 +23,6 @@ class CartManager {
   async createCart() {
     const carts = await this.readFile();
     
-    // Generar ID único
     const newId = carts.length > 0 ? Math.max(...carts.map(c => c.id)) + 1 : 1;
     
     const newCart = {
@@ -59,14 +57,11 @@ class CartManager {
     const cart = carts[cartIndex];
     const productId = Number(pid);
     
-    // Verificar si el producto ya existe en el carrito
     const existingProductIndex = cart.products.findIndex(p => p.product === productId);
     
     if (existingProductIndex !== -1) {
-      // Incrementar cantidad si el producto ya existe
       cart.products[existingProductIndex].quantity += 1;
     } else {
-      // Agregar nuevo producto con cantidad 1
       cart.products.push({
         product: productId,
         quantity: 1

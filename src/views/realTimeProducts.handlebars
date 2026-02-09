@@ -1,0 +1,84 @@
+<div class="socket-status" id="socketStatus">
+    <i class="fas fa-plug" id="statusIcon"></i>
+    <span id="statusText">Conectando...</span>
+</div>
+
+<div class="form-container">
+    <h2 style="margin-bottom: 20px;"><i class="fas fa-plus-circle"></i> Agregar Nuevo Producto</h2>
+    <form id="productForm">
+        <div class="form-group">
+            <label for="title">Título:</label>
+            <input type="text" id="title" name="title" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="description">Descripción:</label>
+            <textarea id="description" name="description" rows="3" required></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="code">Código:</label>
+            <input type="text" id="code" name="code" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="price">Precio:</label>
+            <input type="number" id="price" name="price" step="0.01" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="stock">Stock:</label>
+            <input type="number" id="stock" name="stock" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Categoría:</label>
+            <input type="text" id="category" name="category" required>
+        </div>
+        
+        <button type="submit"><i class="fas fa-plus"></i> Agregar Producto</button>
+    </form>
+</div>
+
+<h2 style="margin-top: 40px;"><i class="fas fa-sync-alt"></i> Productos en Tiempo Real</h2>
+
+<div id="productsContainer" class="products-grid">
+    {{#if products.length}}
+        {{#each products}}
+        <div class="product-card" id="product-{{this.id}}">
+            <div class="product-image">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="product-info">
+                <div class="product-title">{{this.title}}</div>
+                <div class="product-description">{{this.description}}</div>
+                <span class="category">{{this.category}}</span>
+                <div class="product-details">
+                    <div class="price">${{this.price}}</div>
+                    <div class="stock">{{this.stock}} unidades</div>
+                </div>
+                <div class="product-details">
+                    <div>ID: {{this.id}}</div>
+                    <div>Código: {{this.code}}</div>
+                </div>
+                {{#if this.status}}
+                    <div style="color: #48bb78; font-weight: bold;">✓ Disponible</div>
+                {{else}}
+                    <div style="color: #f56565; font-weight: bold;">✗ No disponible</div>
+                {{/if}}
+                <button class="delete-btn" onclick="deleteProduct({{this.id}})" style="margin-top: 10px; width: 100%;">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+        {{/each}}
+    {{else}}
+        <div class="no-products">
+            <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ccc; margin-bottom: 20px;"></i>
+            <p>No hay productos disponibles</p>
+        </div>
+    {{/if}}
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/realTimeProducts.js"></script>

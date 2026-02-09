@@ -7,7 +7,7 @@
     "price": 100,
     "status": true,
     "stock": 10,
-    "category": "Categoría A",
+    "category": "Electrónica",
     "thumbnails": []
   },
   {
@@ -17,8 +17,19 @@
     "code": "P002",
     "price": 200,
     "status": true,
-    "stock": 20,
-    "category": "Categoría B",
+    "stock": 5,
+    "category": "Hogar",
+    "thumbnails": []
+  },
+  {
+    "id": 3,
+    "title": "mouse",
+    "description": "re gamer",
+    "code": "333",
+    "price": 200,
+    "status": true,
+    "stock": 2,
+    "category": "Electronica",
     "thumbnails": []
   }
 ]

@@ -12,7 +12,6 @@ class ProductManager {
       const data = await fsPromise.readFile(this.path, "utf8");
       return JSON.parse(data);
     } catch (error) {
-      // Si el archivo no existe, retorna un array vacío
       return [];
     }
   }
@@ -24,7 +23,6 @@ class ProductManager {
   async addProduct(product) {
     const products = await this.readFile();
     
-    // Validar campos obligatorios
     const requiredFields = ['title', 'description', 'code', 'price', 'stock', 'category'];
     for (const field of requiredFields) {
       if (!product[field]) {
@@ -32,13 +30,11 @@ class ProductManager {
       }
     }
     
-    // Validar que el código no se repita
     const existingProduct = products.find(p => p.code === product.code);
     if (existingProduct) {
       throw new Error(`Ya existe un producto con el código ${product.code}`);
     }
     
-    // Generar ID único
     const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
     
     const newProduct = {
@@ -79,12 +75,10 @@ class ProductManager {
       throw new Error(`Producto con ID ${pid} no encontrado`);
     }
     
-    // No permitir actualizar el ID
     if (updatedFields.id) {
       delete updatedFields.id;
     }
     
-    // Actualizar solo los campos permitidos
     const productToUpdate = products[index];
     const allowedFields = ['title', 'description', 'code', 'price', 'status', 'stock', 'category', 'thumbnails'];
     
@@ -117,3 +111,4 @@ class ProductManager {
 }
 
 export default ProductManager;
+export const productManagerInstance = new ProductManager("./src/data/products.json");
