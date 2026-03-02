@@ -1,0 +1,344 @@
+<div class="products-header">
+    <h2><i class="fas fa-boxes"></i> Todos los Productos</h2>
+    
+    <div class="filters-section">
+        <h3>Filtros</h3>
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label for="categoryFilter">Categoría:</label>
+                <select id="categoryFilter" onchange="applyFilters()">
+                    <option value="">Todas</option>
+                    <option value="Electrónica">Electrónica</option>
+                    <option value="Hogar">Hogar</option>
+                    <option value="Ropa">Ropa</option>
+                    <option value="Deportes">Deportes</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="statusFilter">Disponibilidad:</label>
+                <select id="statusFilter" onchange="applyFilters()">
+                    <option value="">Todos</option>
+                    <option value="disponibles">Disponibles</option>
+                    <option value="no-disponibles">No disponibles</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="sortFilter">Ordenar por precio:</label>
+                <select id="sortFilter" onchange="applyFilters()">
+                    <option value="">Sin orden</option>
+                    <option value="asc">Menor a mayor</option>
+                    <option value="desc">Mayor a menor</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="limitFilter">Productos por página:</label>
+                <select id="limitFilter" onchange="applyFilters()">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{#if products.length}}
+    <div class="products-grid">
+        {{#each products}}
+        <div class="product-card">
+            <div class="product-image">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="product-info">
+                <div class="product-title">{{this.title}}</div>
+                <div class="product-description">{{this.description}}</div>
+                <span class="category">{{this.category}}</span>
+                <div class="product-details">
+                    <div class="price">${{this.price}}</div>
+                    <div class="stock">{{this.stock}} unidades</div>
+                </div>
+                {{#if this.status}}
+                    <div style="color: #48bb78; font-weight: bold; margin-bottom: 10px;">✓ Disponible</div>
+                {{else}}
+                    <div style="color: #f56565; font-weight: bold; margin-bottom: 10px;">✗ No disponible</div>
+                {{/if}}
+                <div class="product-actions">
+                    <a href="/products/{{this.id}}" class="btn btn-primary">
+                        <i class="fas fa-eye"></i> Ver detalles
+                    </a>
+                    <button onclick="addToCart('{{this.id}}')" class="btn btn-success">
+                        <i class="fas fa-cart-plus"></i> Agregar
+                    </button>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+
+    {{#if totalPages}}
+    <div class="pagination">
+        {{#if hasPrevPage}}
+            <a href="?page={{prevPage}}&limit={{limit}}&sort={{sort}}&query={{query}}" class="page-link">
+                <i class="fas fa-chevron-left"></i> Anterior
+            </a>
+        {{else}}
+            <span class="page-link disabled"><i class="fas fa-chevron-left"></i> Anterior</span>
+        {{/if}}
+        
+        <span class="page-info">
+            Página {{page}} de {{totalPages}}
+        </span>
+        
+        {{#if hasNextPage}}
+            <a href="?page={{nextPage}}&limit={{limit}}&sort={{sort}}&query={{query}}" class="page-link">
+                Siguiente <i class="fas fa-chevron-right"></i>
+            </a>
+        {{else}}
+            <span class="page-link disabled">Siguiente <i class="fas fa-chevron-right"></i></span>
+        {{/if}}
+    </div>
+    {{/if}}
+{{else}}
+    <div class="no-products">
+        <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #ccc; margin-bottom: 20px;"></i>
+        <p>No hay productos disponibles</p>
+    </div>
+{{/if}}
+
+<script>
+// Función para obtener o crear un carrito usando localStorage
+async function getOrCreateCart() {
+    let cartId = localStorage.getItem('cartId');
+    
+    // Si no hay carrito en localStorage, crear uno nuevo
+    if (!cartId) {
+        try {
+            const response = await fetch('/api/carts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success' && data.data && data.data.id) {
+                cartId = data.data.id;
+                localStorage.setItem('cartId', cartId);
+                console.log('✅ Carrito creado con ID:', cartId);
+                
+                // Actualizar el enlace del carrito en el header si existe
+                updateCartLink(cartId);
+            } else {
+                throw new Error('No se pudo crear el carrito');
+            }
+        } catch (error) {
+            console.error('❌ Error al crear carrito:', error);
+            return null;
+        }
+    }
+    
+    return cartId;
+}
+
+// Función para actualizar el enlace del carrito en el header
+function updateCartLink(cartId) {
+    const cartLink = document.querySelector('a[href*="/carts/"]');
+    if (cartLink) {
+        cartLink.href = `/carts/${cartId}`;
+    }
+}
+
+// Función para agregar producto al carrito
+async function addToCart(productId) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Mostrar estado de carga
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agregando...';
+    button.disabled = true;
+    
+    try {
+        const cartId = await getOrCreateCart();
+        
+        if (!cartId) {
+            throw new Error('No se pudo obtener/crear el carrito');
+        }
+        
+        const response = await fetch(`/api/carts/${cartId}/product/${productId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Mostrar éxito temporalmente
+            button.innerHTML = '<i class="fas fa-check"></i> Agregado';
+            button.style.background = '#48bb78';
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '';
+                button.disabled = false;
+            }, 2000);
+        } else {
+            throw new Error(data.message || 'Error al agregar producto');
+        }
+    } catch (error) {
+        console.error('❌ Error:', error);
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+        button.style.background = '#f56565';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+            button.disabled = false;
+        }, 2000);
+        
+        alert('❌ Error al agregar al carrito: ' + error.message);
+    }
+}
+
+function applyFilters() {
+    const category = document.getElementById('categoryFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const sort = document.getElementById('sortFilter').value;
+    const limit = document.getElementById('limitFilter').value;
+    
+    let query = category || status || '';
+    if (status && !category) {
+        query = status;
+    }
+    
+    let url = '/products?';
+    const params = [];
+    
+    if (limit) params.push(`limit=${limit}`);
+    if (sort) params.push(`sort=${sort}`);
+    if (query) params.push(`query=${query}`);
+    
+    window.location.href = url + params.join('&');
+}
+
+// Inicializar al cargar la página
+document.addEventListener('DOMContentLoaded', async () => {
+    // Intentar obtener carrito existente o crear uno nuevo
+    const cartId = await getOrCreateCart();
+    if (cartId) {
+        console.log('🛒 Carrito activo:', cartId);
+    }
+});
+</script>
+
+<style>
+.products-header {
+    margin-bottom: 30px;
+}
+
+.filters-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.filters-section h3 {
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-group label {
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #555;
+}
+
+.filter-group select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.product-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn {
+    flex: 1;
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    font-size: 14px;
+    transition: opacity 0.3s;
+}
+
+.btn:hover {
+    opacity: 0.8;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-success {
+    background: #48bb78;
+    color: white;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    gap: 20px;
+}
+
+.page-link {
+    padding: 10px 20px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: opacity 0.3s;
+}
+
+.page-link.disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.page-link:hover:not(.disabled) {
+    opacity: 0.8;
+}
+
+.page-info {
+    font-size: 16px;
+    color: #666;
+}
+</style>

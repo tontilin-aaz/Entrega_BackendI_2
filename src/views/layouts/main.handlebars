@@ -219,6 +219,17 @@
         .status-disconnected {
             color: #f56565;
         }
+
+        /* Estilo para el contador del carrito */
+        .cart-badge {
+            background-color: #f56565;
+            color: white;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 12px;
+            margin-left: 5px;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
@@ -228,7 +239,14 @@
             <nav>
                 <ul>
                     <li><a href="/"><i class="fas fa-home"></i> Inicio</a></li>
+                    <li><a href="/products"><i class="fas fa-boxes"></i> Productos</a></li>
                     <li><a href="/realtimeproducts"><i class="fas fa-bolt"></i> Tiempo Real</a></li>
+                    <li>
+                        <a href="/carts/1" id="cart-link">
+                            <i class="fas fa-shopping-cart"></i> Carrito 
+                            <span id="cart-count" class="cart-badge" style="display: none;">0</span>
+                        </a>
+                    </li>
                 </ul>
             </nav>
         </div>
@@ -241,5 +259,89 @@
     <footer>
         <p>&copy; 2024 Tienda Online - Entrega Backend</p>
     </footer>
+
+    <script>
+        // Función para obtener o crear un carrito usando localStorage
+        async function getOrCreateCart() {
+            let cartId = localStorage.getItem('cartId');
+            
+            // Si no hay carrito en localStorage, crear uno nuevo
+            if (!cartId) {
+                try {
+                    const response = await fetch('/api/carts', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success' && data.data && data.data.id) {
+                        cartId = data.data.id;
+                        localStorage.setItem('cartId', cartId);
+                        console.log('✅ Carrito creado con ID:', cartId);
+                    } else {
+                        throw new Error('No se pudo crear el carrito');
+                    }
+                } catch (error) {
+                    console.error('❌ Error al crear carrito:', error);
+                    return null;
+                }
+            }
+            
+            return cartId;
+        }
+
+        // Función para obtener el conteo de productos del carrito
+        async function getCartCount(cartId) {
+            try {
+                const response = await fetch(`/api/carts/${cartId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.data) {
+                    return data.data.products ? data.data.products.length : 0;
+                }
+                return 0;
+            } catch (error) {
+                console.error('❌ Error al obtener conteo del carrito:', error);
+                return 0;
+            }
+        }
+
+        // Función para actualizar el enlace del carrito y el contador
+        async function updateCartLink() {
+            const cartLink = document.getElementById('cart-link');
+            const cartCount = document.getElementById('cart-count');
+            
+            if (!cartLink) return;
+            
+            const cartId = await getOrCreateCart();
+            
+            if (cartId) {
+                // Actualizar el href del enlace
+                cartLink.href = `/carts/${cartId}`;
+                
+                // Obtener y mostrar el conteo de productos
+                const count = await getCartCount(cartId);
+                if (count > 0) {
+                    cartCount.textContent = count;
+                    cartCount.style.display = 'inline-block';
+                } else {
+                    cartCount.style.display = 'none';
+                }
+            }
+        }
+
+        // Ejecutar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', updateCartLink);
+
+        // Escuchar eventos personalizados para actualizar el contador
+        window.addEventListener('cartUpdated', function() {
+            updateCartLink();
+        });
+
+        // También podemos exponer la función globalmente para que otras vistas puedan llamarla
+        window.refreshCartCount = updateCartLink;
+    </script>
 </body>
 </html>

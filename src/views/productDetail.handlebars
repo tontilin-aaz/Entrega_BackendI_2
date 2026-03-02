@@ -1,0 +1,311 @@
+{{!-- src/views/productDetail.handlebars --}}
+<div class="product-detail-container">
+    <a href="/products" class="back-link">
+        <i class="fas fa-arrow-left"></i> Volver a productos
+    </a>
+    
+    <div class="product-detail-card">
+        <div class="product-detail-image">
+            <i class="fas fa-box-open" style="font-size: 120px; color: #667eea;"></i>
+        </div>
+        
+        <div class="product-detail-info">
+            <h1 class="product-detail-title">{{product.title}}</h1>
+            
+            <div class="product-detail-meta">
+                <span class="product-detail-category">{{product.category}}</span>
+                <span class="product-detail-code">Código: {{product.code}}</span>
+            </div>
+            
+            <div class="product-detail-price">
+                ${{product.price}}
+            </div>
+            
+            <div class="product-detail-description">
+                <h3>Descripción:</h3>
+                <p>{{product.description}}</p>
+            </div>
+            
+            <div class="product-detail-stock">
+                <strong>Stock disponible:</strong> {{product.stock}} unidades
+            </div>
+            
+            <div class="product-detail-status">
+                {{#if product.status}}
+                    <span class="status-badge status-available">
+                        <i class="fas fa-check-circle"></i> Producto disponible
+                    </span>
+                {{else}}
+                    <span class="status-badge status-unavailable">
+                        <i class="fas fa-times-circle"></i> Producto no disponible
+                    </span>
+                {{/if}}
+            </div>
+            
+            <div class="product-detail-actions">
+                <button onclick="addToCart('{{product.id}}')" class="btn-add-to-cart" {{#unless product.status}}disabled{{/unless}}>
+                    <i class="fas fa-cart-plus"></i> Agregar al carrito
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Función para obtener o crear un carrito usando localStorage
+async function getOrCreateCart() {
+    let cartId = localStorage.getItem('cartId');
+    
+    // Si no hay carrito en localStorage, crear uno nuevo
+    if (!cartId) {
+        try {
+            const response = await fetch('/api/carts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'success' && data.data && data.data.id) {
+                cartId = data.data.id;
+                localStorage.setItem('cartId', cartId);
+                console.log('✅ Carrito creado con ID:', cartId);
+                
+                // Actualizar el enlace del carrito en el header si existe
+                updateCartLink(cartId);
+            } else {
+                throw new Error('No se pudo crear el carrito');
+            }
+        } catch (error) {
+            console.error('❌ Error al crear carrito:', error);
+            return null;
+        }
+    }
+    
+    return cartId;
+}
+
+// Función para actualizar el enlace del carrito en el header
+function updateCartLink(cartId) {
+    const cartLink = document.querySelector('a[href*="/carts/"]');
+    if (cartLink) {
+        cartLink.href = `/carts/${cartId}`;
+    }
+}
+
+// Función para agregar producto al carrito
+async function addToCart(productId) {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // Mostrar estado de carga
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Agregando...';
+    button.disabled = true;
+    
+    try {
+        const cartId = await getOrCreateCart();
+        
+        if (!cartId) {
+            throw new Error('No se pudo obtener/crear el carrito');
+        }
+        
+        const response = await fetch(`/api/carts/${cartId}/product/${productId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Mostrar éxito temporalmente
+            button.innerHTML = '<i class="fas fa-check"></i> Agregado';
+            button.style.background = '#48bb78';
+            
+            setTimeout(() => {
+                button.innerHTML = originalText;
+                button.style.background = '';
+                button.disabled = false;
+            }, 2000);
+            
+            // Opcional: preguntar si quiere ir al carrito
+            setTimeout(() => {
+                if (confirm('✅ Producto agregado. ¿Quieres ver tu carrito?')) {
+                    window.location.href = `/carts/${cartId}`;
+                }
+            }, 500);
+        } else {
+            throw new Error(data.message || 'Error al agregar producto');
+        }
+    } catch (error) {
+        console.error('❌ Error:', error);
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error';
+        button.style.background = '#f56565';
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.background = '';
+            button.disabled = false;
+        }, 2000);
+        
+        alert('❌ Error al agregar al carrito: ' + error.message);
+    }
+}
+
+// Inicializar al cargar la página
+document.addEventListener('DOMContentLoaded', async () => {
+    // Intentar obtener carrito existente o crear uno nuevo
+    const cartId = await getOrCreateCart();
+    if (cartId) {
+        console.log('🛒 Carrito activo:', cartId);
+    }
+});
+</script>
+
+<style>
+.product-detail-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #667eea;
+    text-decoration: none;
+    font-size: 16px;
+}
+
+.back-link:hover {
+    text-decoration: underline;
+}
+
+.product-detail-card {
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    padding: 40px;
+}
+
+.product-detail-image {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.product-detail-info {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.product-detail-title {
+    font-size: 2.5rem;
+    color: #333;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.product-detail-meta {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.product-detail-category {
+    background: #e0e7ff;
+    color: #667eea;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.product-detail-code {
+    color: #999;
+    font-size: 14px;
+}
+
+.product-detail-price {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #667eea;
+    line-height: 1.2;
+}
+
+.product-detail-description {
+    color: #666;
+    line-height: 1.8;
+}
+
+.product-detail-description h3 {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.product-detail-stock {
+    font-size: 18px;
+    color: #666;
+    padding: 15px 0;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.status-available {
+    background: #c6f6d5;
+    color: #22543d;
+}
+
+.status-unavailable {
+    background: #fed7d7;
+    color: #742a2a;
+}
+
+.btn-add-to-cart {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.3s;
+    width: 100%;
+}
+
+.btn-add-to-cart:hover:not(:disabled) {
+    opacity: 0.9;
+}
+
+.btn-add-to-cart:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .product-detail-card {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

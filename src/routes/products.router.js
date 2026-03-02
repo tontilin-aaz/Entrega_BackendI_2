@@ -1,16 +1,27 @@
+// src/routes/products.router.js
 import { Router } from "express";
-import ProductManager from "../manager/Product.manager.js";
-import { io } from "../app.js";
+import ProductManager from "../manager/ProductManager.mongo.js";
 
 const router = Router();
-const productManager = new ProductManager("./src/data/products.json");
+const productManager = new ProductManager();
 
 router.get("/", async (req, res) => {
   try {
-    const products = await productManager.getProducts();
-    res.json({ status: "success", data: products });
+    const { limit, page, sort, query } = req.query;
+    
+    const result = await productManager.getProducts({
+      limit,
+      page,
+      sort,
+      query
+    });
+    
+    res.json(result);
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ 
+      status: "error", 
+      message: error.message 
+    });
   }
 });
 
@@ -28,8 +39,8 @@ router.post("/", async (req, res) => {
   try {
     const newProduct = await productManager.addProduct(req.body);
     
-    // Emitir evento WebSocket para actualizar clientes
-    const updatedProducts = await productManager.getProducts();
+    const io = req.app.get('io');
+    const { payload: updatedProducts } = await productManager.getProducts();
     io.emit("productsUpdated", updatedProducts);
     io.emit("productAdded", newProduct);
     
@@ -44,8 +55,8 @@ router.put("/:pid", async (req, res) => {
     const productId = req.params.pid;
     const updatedProduct = await productManager.updateProduct(productId, req.body);
     
-    // Emitir evento WebSocket para actualizar clientes
-    const updatedProducts = await productManager.getProducts();
+    const io = req.app.get('io');
+    const { payload: updatedProducts } = await productManager.getProducts();
     io.emit("productsUpdated", updatedProducts);
     
     res.json({ status: "success", data: updatedProduct });
@@ -59,8 +70,8 @@ router.delete("/:pid", async (req, res) => {
     const productId = req.params.pid;
     const deletedProduct = await productManager.deleteProduct(productId);
     
-    // Emitir evento WebSocket para actualizar clientes
-    const updatedProducts = await productManager.getProducts();
+    const io = req.app.get('io');
+    const { payload: updatedProducts } = await productManager.getProducts();
     io.emit("productsUpdated", updatedProducts);
     io.emit("productDeleted", productId);
     
@@ -74,4 +85,20 @@ router.delete("/:pid", async (req, res) => {
   }
 });
 
+router.get("/debug/count", async (req, res) => {
+  try {
+    // Importamos el modelo directamente para contar
+    const { default: ProductModel } = await import("../models/product.model.js");
+    const count = await ProductModel.countDocuments();
+    const products = await ProductModel.find().lean();
+    
+    res.json({ 
+      message: "Productos en MongoDB", 
+      count,
+      products: products.map(p => ({ id: p._id, title: p.title, code: p.code }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 export default router;
